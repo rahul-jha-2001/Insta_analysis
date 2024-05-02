@@ -21,11 +21,8 @@ def push(data:json,db,document) -> None:
     _ = collection.insert_one(data)
     logging.info(f"Data pushed into DB with following ids{_}")
 def pull(filter:dict,colunm:dict,db:str,document:str) -> list:
-    return(list(myclient[db][document].find(filter=filter,projection = colunm)))
+    return list(myclient[db][document].find(filter=filter,projection = colunm))
     
-if __name__ == "__main__":
-    #data = myclient["Raw_data"]["Creators"].find({},{"username":1,"_id":0})
-    print(pull({},{"username":1,"_id":0},db="Raw_data",document="Creators"))
 
 
     
