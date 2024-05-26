@@ -10,13 +10,13 @@ class ELT():
 
     def __init__(self) -> None:
         self.DB = DB()
-        self.data = self.DB.pull(filter={},colunm={"_id":0},db="Raw_data",document="Creators") 
+        self.data = self.DB.pull(filter={},colunm={"_id":0},db="Raw_data",document="Creator") 
         self.df = pd.DataFrame(self.data)
 
     def ETL(self):
 
-        df = self.df[self.df.error != 'Page not found']
-        print(df.columns)
+        df = self.df.copy(deep= True)
+        print(df.info())
         posts = []
         for i in df["latestPosts"]:
             if type(i) == float:
@@ -39,6 +39,10 @@ class ELT():
         df_post.rename(columns = {"id":"media_id"},inplace= True)
         df_post = df_post[df_post["isPinned"] != True]
         df_post["timestamp"] = df_post["timestamp"].apply(datetime.fromisoformat,1)
+ 
+          
+
+
         df_post = df_post.merge(df[["id","followersCount"]],left_on="ownerId",right_on= "id")
 
         df_post["ER_per"] = ((df_post["likesCount"] + df_post["commentsCount"])/df_post["followersCount"])*100
@@ -82,14 +86,29 @@ class ELT():
         for i in id_to_related.keys():
             temp_lis_1.append(i)
             temp_lls_2.append(id_to_related[i])
-        df_related = pd.DataFrame({"id":temp_lis_1,"related":temp_lls_2})    
+        df_related = pd.DataFrame({"id":temp_lis_1,"related":temp_lls_2})
+        def Category_cleaner(label:str):
+            try:
+                if "None," in label:
+                    label.removeprefix("None,")
+            except:
+                return "NA"
+            return label
+        df["businessCategoryName"] = df["businessCategoryName"].apply(Category_cleaner)    
         df = df.merge(df_related,left_on = "id",right_on = "id")
-        print(df.columns)
-        df_final = df[['date', 'fullName', 'followersCount', 'verified',
+        df_final = df[['Date', 'fullName', 'followersCount', 'verified',
         'followsCount', 'private', 'username',
         'isBusinessAccount', 'id', 'businessCategoryName', 'biography',
         'postsCount','avg_likes', 'avg_cmnt',
         'avg_reach', 'avg_ER', 'avg_LC', 'hashtags', 'related']]
         df_post.drop(labels=["mentions","alt","ownerUsername","isPinned","id"],inplace=True,axis=1)
+        for j in df_final["username"]:
+            to_scan_dict = {"id":j,"priority":1}
+            self.DB.push(to_scan_dict,"Clean","To_scan")
         self.DB.push_many(data = df_final.to_dict(orient = "records"),db = "Clean",document = "Creators")
         self.DB.push_many(data = df_post.to_dict(orient = "records"),db = "Clean",document = "Posts")
+        remove_filter = {'username': {'$in': list(df_final["username"]) }}
+        self.DB.remove(db = "Raw_data",document="Creator",filter= remove_filter)   
+if __name__ == "__main__":
+    E = ELT()
+    E.ETL()

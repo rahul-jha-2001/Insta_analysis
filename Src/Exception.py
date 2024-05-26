@@ -6,6 +6,7 @@ def error_message_detail(error):
 
     return error_message
 
+
 class CustomException(Exception):
     def __init__(self,error) -> None:
         super().__init__(error)

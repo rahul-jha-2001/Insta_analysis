@@ -6,40 +6,89 @@ import pandas as pd
 from datetime import datetime
 from db_connector import DB
 from logger import logging
+from dotenv import load_dotenv
+import os
+from Exception import CustomException
+
+
 
 class Scrape():
-    Task_URL = "https://api.apify.com/v2/actor-tasks/yellow_saint~instagram-scraper-task/input?token=apify_api_qIc4Lwctqfr2WAFjmyQZ2mwd1zYhwO0JFLvE"
-    Scrape_Link_dataset = "https://api.apify.com/v2/actor-tasks/yellow_saint~instagram-scraper-task/run-sync-get-dataset-items?token=apify_api_qIc4Lwctqfr2WAFjmyQZ2mwd1zYhwO0JFLvE"
     Insta_Link = 'https://www.instagram.com/{x}/'
+
     
 
 
     def __init__(self) -> None:
+        load_dotenv()
+        self.Task_URL = os.getenv("Task_URL")
+        self.Scrape_Link_dataset =   os.getenv("Scrape_Link_dataset")
+        self.Flag = True
+        self.Scanned_count = 0
         self.inputs  =  requests.get(self.Task_URL).json()
         self.DB = DB()
         logging.info("DB connected at Scraper")
-        self.To_scan()
         
         
-    def To_scan(self) -> list:
-        Unsorted_list = self.DB.pull(db = "Clean",document="To_scan",filter= {},colunm={"_id":0,})
-        sorted_data = sorted(Unsorted_list, key=lambda x: x['priority'])
-        final_list = []
-        for i in sorted_data:
-            final_list.append(i["id"])
-        self.To_scan = final_list    
+        
+    def url_maker(self) -> list:
+        url_list = []
+        for i in self.To_scan_list:
+            url_list.append(self.Insta_Link.format(x=i))
+        return url_list   
+    def input_obj_maker(self) -> None:
+        self.obj_list = []
+        list_of_usernames = self.url_maker()
+        block_size = 10
+        blocks = [list_of_usernames[i:i+block_size] for i in range(0, len(list_of_usernames), block_size)]
+        for i in blocks:
+            temp = copy.deepcopy(self.inputs)
+            temp["directUrls"] =  i
+            self.obj_list.append(temp)
+
+
+    def To_scan(self,update_old_accs:bool) -> list:
+        if update_old_accs:
+            final_list = self.DB.pull(db = "Clean",document="To_scan",filter= {"priority":1},colunm={"_id":0,"priority":0},limit= 300)
+            final_list = [x["id"] for x in final_list]
+            final_list = set(final_list)
+            final_list = list(final_list)
+            if len(final_list) == 0:
+                self.Flag = False
+                logging.warning("No Accs left to update")
+        elif not update_old_accs:
+                
+                final_list = self.DB.pull(db = "Clean",document="To_scan",filter= {"priority":2},colunm={"_id":0,"priority":0},limit= 300)
+                final_list = [x["id"] for x in final_list]
+                final_list = set(final_list)
+                final_list = list(final_list)
+
+                To_get_filter = {'username': {'$in':final_list}}
+                Acc_not_to_scan = self.DB.pull(db = "Clean",document="Creators",filter= To_get_filter,colunm={"_id":0})
+                
+                for i in [x["username"] for x in Acc_not_to_scan]:  
+                    final_list.remove(i)
+                if len(final_list) == 0:
+                    self.Flag = False
+                    logging.warning("No Accs left to scan")
+
+        
+        self.To_scan_list = final_list
+
+        remove_filter = {'id': {'$in': final_list }}
+        self.DB.remove(db = "Clean",document="To_scan",filter= remove_filter)    
         logging.info("To_scan listed Created")
+        self.input_obj_maker()
 
     
     async def get(self,session: aiohttp.ClientSession,input_obj:dict,url : str) -> dict:
 
-        print(f"Requesting {url}")
+        logging.info(f"Requesting {url}")
         resp = await session.request('POST', url=url,json=input_obj)
 
         # Note that this may raise an exception for non-2xx responses
         # You can either handle that here, or pass the exception through
         data = await resp.json()
-        print(f"Received data for {url}")
+        logging.info(f"Received data for {url}")
         return data
 
 
@@ -49,7 +98,6 @@ class Scrape():
         async with aiohttp.ClientSession() as session:
             tasks = []
             for obj in input_objs:
-                print(session)
                 tasks.append(self.get(session=session, url=url,input_obj=obj))
             # asyncio.gather() will wait on the entire task set to be
             # completed.  If you want to process results greedily as they come in,
@@ -66,36 +114,46 @@ class Scrape():
         cleaned_data = []
         for i in data:
             for j in i:
-                j["Date"] = datetime.today() 
-                cleaned_data.append(j)
-        self.DB.push_many(data=cleaned_data,db="Raw_data",document="Creator")
+                try:
+                    j["Date"] = datetime.today() 
+                    cleaned_data.append(j)
+                    self.DB.push(data=j,db="Raw_data",document="Creator")
+                except:
+                    logging.warning("Some Error encounterd")
+                    logging.warning(f"{j}")
+                    continue
+        self.Scanned_count = self.Scanned_count + len(cleaned_data)        
+        
+        logging.info("data Cleaned")
 
         for i in cleaned_data:
-            if  not (i["error"] =="Page not found"):
 
-                for j in i["relatedProfiles"]:
-                    to_scan_dict = {"id":j["username"],"priority":2}
+            for j in i["relatedProfiles"]:
+                    to_scan_dict = {"id":j["username"],"priority":2}    
                     self.DB.push(to_scan_dict,"Clean","To_scan")
             
       
                 
     
-    def url_maker(self) -> list:
-        url_list = []
-        for i in self.To_scan:
-            url_list.append(Insta_Link.format(x=i))
-        return url_list   
-    def input_obj_maker(self) -> None:
-        self.obj_list = []
-        list_of_usernames = self.url_maker()
-        block_size = 10
-        print(block_size)
-        blocks = [list_of_usernames[i:i+block_size] for i in range(0, len(list_of_usernames), block_size)]
-        for i in blocks:
-            temp = copy.deepcopy(self.inputs)
-            temp["directUrls"] =  i
-            self.obj_list.append(temp)  
-    async def scrape(self):
-        data = await self.main(self.obj_list,self.Scrape_Link_dataset)
-        self.data = data
-        self.Cleaner(self.data)
+  
+    async def scrape(self,Update_old_accs:bool =False):
+    
+        self.To_scan(Update_old_accs)
+        if self.Flag:
+                data = await self.main(self.obj_list,self.Scrape_Link_dataset)
+                self.data = data
+                logging.info("Scrapping Done and cleaning statred")
+                self.Cleaner(self.data)
+    
+    async def async_main(self, Update_old_accs:bool =False):
+        await asyncio.gather(self.scrape(Update_old_accs))    
+    def run(self,Update_old_accs:bool =False):
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(self.async_main(Update_old_accs))
+        
+if __name__ == "__main__":
+    
+    obj = Scrape()
+    obj.To_scan(False)
+    obj.run(Update_old_accs=False)
+    
