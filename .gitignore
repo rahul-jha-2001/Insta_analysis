@@ -165,11 +165,8 @@ Logs
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
-<<<<<<< HEAD
-=======
 session.json
 test.py
-test.ipynb
->>>>>>> c100c458415a94c75fcfb482968cb4e06c948ad6
- .csv
- 
+test.ipgurynb
+ .csv/
+ /.json

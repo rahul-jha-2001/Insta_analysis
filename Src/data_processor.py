@@ -24,13 +24,8 @@ class ELT():
         df_post = pd.DataFrame(posts)
 
 
-        """ drop_labels_main = ["inputUrl","url","externalUrl","hasChannel",
-                    "latestIgtvVideos","joinedRecently","highlightReelCount",
-                    "profilePicUrl","externalUrlShimmed","igtvVideoCount"]"""
         drop_labels_post = ['shortCode', 'url', 'dimensionsHeight', 'dimensionsWidth','displayUrl','images', 'videoUrl', 'childPosts'
                             ,'locationName', 'locationId',"mentions","alt","ownerUsername","isPinned","id"]
-        #df.drop(drop_labels_main,axis= 1,inplace=True)
-        #df_post.drop(drop_labels_post,axis = 1,inplace = True)
        
         df_post.rename({"id":"media_id"},inplace= True)
             
@@ -101,20 +96,31 @@ class ELT():
                 df_post.drop(i,axis=1,inplace=True)
             except KeyError:
                 continue
+        
         df["businessCategoryName"] = df["businessCategoryName"].apply(Category_cleaner)    
         df = df.merge(df_related,left_on = "id",right_on = "id")
+       
+       
         df_final = df[['Date', 'fullName', 'followersCount', 'verified',
         'followsCount', 'private', 'username',
         'isBusinessAccount', 'id', 'businessCategoryName', 'biography',
         'postsCount','avg_likes', 'avg_cmnt',
         'avg_reach', 'avg_ER', 'avg_LC', 'hashtags', 'related']]
+        
         for j in df_final["username"]:
             to_scan_dict = {"id":j,"priority":1}
             self.DB.push(to_scan_dict,"Clean","To_scan")
+        To_remove =  self.DB.pull(db="Clean",document="Creators",filter={},colunm={"_id":0,"username":1})
+
+        Temp = [x["username"] for x in To_remove]
+        remove = {"id":{"$in":Temp},"priority":2}
+        self.DB.delete(db="Clean",document="To_scan",filter=remove)    
+        
+        
         self.DB.push_many(data = df_final.to_dict(orient = "records"),db = "Clean",document = "Creators")
         self.DB.push_many(data = df_post.to_dict(orient = "records"),db = "Clean",document = "Posts")
         remove_filter = {'username': {'$in': list(df_final["username"]) }}
-        self.DB.remove(db = "Raw_data",document="Creator",filter= remove_filter)   
+        self.DB.delete(db = "Raw_data",document="Creator",filter= remove_filter)   
 if __name__ == "__main__":
     E = ELT()
     E.ETL()

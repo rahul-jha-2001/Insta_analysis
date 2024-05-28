@@ -30,7 +30,8 @@ class DB():
         collection = self.myclient[db][document]
         _ = collection.insert_many(data)
         logging.info(f"Data pushed into DB with following ids{_.inserted_ids}")
-    def remove(self,db:str,document:str,filter:dict):
+    def delete(self,db:str,document:str,filter:dict):
         collection = self.myclient[db][document]
         d = collection.delete_many(filter=filter)
         logging.info(f"{d.deleted_count} documents deleted")
+

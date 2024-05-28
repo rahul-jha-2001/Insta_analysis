@@ -75,7 +75,7 @@ class Scrape():
         self.To_scan_list = final_list
 
         remove_filter = {'id': {'$in': final_list }}
-        self.DB.remove(db = "Clean",document="To_scan",filter= remove_filter)    
+        self.DB.delete(db = "Clean",document="To_scan",filter= remove_filter)    
         logging.info("To_scan listed Created")
         self.input_obj_maker()
 
@@ -129,9 +129,13 @@ class Scrape():
         for i in cleaned_data:
 
             for j in i["relatedProfiles"]:
-                    to_scan_dict = {"id":j["username"],"priority":2}    
-                    self.DB.push(to_scan_dict,"Clean","To_scan")
-            
+                    to_scan_dict = {"id":j["username"],"priority":2}
+                    try:
+
+                        self.DB.push(to_scan_dict,"Clean","To_scan")
+                    except:
+                        continue
+                        
       
                 
     
