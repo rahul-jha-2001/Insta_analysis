@@ -34,4 +34,3 @@ class DB():
         collection = self.myclient[db][document]
         d = collection.delete_many(filter=filter)
         logging.info(f"{d.deleted_count} documents deleted")
-        print("{x} documents deleted".format( x = d.deleted_count))

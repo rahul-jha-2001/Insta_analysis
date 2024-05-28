@@ -154,6 +154,4 @@ class Scrape():
 if __name__ == "__main__":
     
     obj = Scrape()
-    obj.To_scan(False)
-    obj.run(Update_old_accs=False)
-    
+    obj.run()
