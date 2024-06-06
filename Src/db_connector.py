@@ -1,5 +1,5 @@
-from Src.logger import logging
-from Src.Exception import CustomException
+from logger import logging
+from Exception import CustomException
 import pymongo
 import json
 from datetime import datetime
@@ -34,4 +34,5 @@ class DB():
         collection = self.myclient[db][document]
         d = collection.delete_many(filter=filter)
         logging.info(f"{d.deleted_count} documents deleted")
+
 

@@ -1,4 +1,4 @@
-from Src.logger import logging
+from logger import logging
 import sys
 def error_message_detail(error):
     file_name =error.__traceback__.tb_frame.f_code.co_filename

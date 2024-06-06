@@ -1,14 +1,15 @@
+
 import requests
 import asyncio
 import aiohttp
 import copy
 import pandas as pd
 from datetime import datetime
-from Src.db_connector import DB
-from Src.logger import logging
+from db_connector import DB
+from logger import logging
 from dotenv import load_dotenv
 import os
-from Src.Exception import CustomException
+from Exception import CustomException
 
 
 
@@ -50,6 +51,7 @@ class Scrape():
         if update_old_accs:
             final_list = self.DB.pull(db = "Clean",document="To_scan",filter= {"priority":1},colunm={"_id":0,"priority":0},limit= 300)
             final_list = [x["id"] for x in final_list]
+            print(final_list)
             final_list = set(final_list)
             final_list = list(final_list)
             if len(final_list) == 0:
@@ -131,7 +133,7 @@ class Scrape():
             for j in i["relatedProfiles"]:
                     to_scan_dict = {"id":j["username"],"priority":2}
                     try:
-
+                        
                         self.DB.push(to_scan_dict,"Clean","To_scan")
                     except:
                         continue
@@ -155,7 +157,3 @@ class Scrape():
         loop = asyncio.get_event_loop()
         loop.run_until_complete(self.async_main(Update_old_accs))
         
-if __name__ == "__main__":
-    
-    obj = Scrape()
-    obj.run()

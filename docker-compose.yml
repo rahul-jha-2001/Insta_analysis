@@ -9,12 +9,33 @@ services:
     image: airflow_insta_analysis:latest
     volumes:
 
-      - .:/opt/insta_analysis
+
+      - .airflow:/opt/airflow
+      - ./Src:/opt/Src
+    networks:
+      insta-net:
+        ipv4_address: 10.10.10.2
     ports:
 
       - "8080:8080"
-    environment:
-      - AIRFLOW_HOME=/opt/insta_analysis/airflow
+    
     command: airflow standalone
+  
+  mongodb:
+    image: 80344b3d4df4
+    volumes:
+      - .mongodb_data:/data/db
+    networks:
+      insta-net:
+        ipv4_address: 10.10.10.3 
+    ports:
 
+      - "27017:27017"
+networks:
 
+  insta-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24
+          gateway: 10.10.10.1
