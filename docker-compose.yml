@@ -1,0 +1,20 @@
+
+version: '3'
+
+
+
+services:
+
+  airflow:
+    image: airflow_insta_analysis:latest
+    volumes:
+
+      - .:/opt/insta_analysis
+    ports:
+
+      - "8080:8080"
+    environment:
+      - AIRFLOW_HOME=/opt/insta_analysis/airflow
+    command: airflow standalone
+
+

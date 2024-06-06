@@ -4,11 +4,11 @@ import aiohttp
 import copy
 import pandas as pd
 from datetime import datetime
-from db_connector import DB
-from logger import logging
+from Src.db_connector import DB
+from Src.logger import logging
 from dotenv import load_dotenv
 import os
-from Exception import CustomException
+from Src.Exception import CustomException
 
 
 

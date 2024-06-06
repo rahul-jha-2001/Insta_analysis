@@ -1,5 +1,5 @@
-from logger import logging
-from Exception import CustomException
+from Src.logger import logging
+from Src.Exception import CustomException
 import pymongo
 import json
 from datetime import datetime

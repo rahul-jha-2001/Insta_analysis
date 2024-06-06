@@ -1,9 +1,9 @@
 
-from db_connector import DB
-from Exception import CustomException
+from Src.db_connector import DB
+from Src.Exception import CustomException
 import pandas as pd
 import numpy as np
-from logger import logging
+from Src.logger import logging
 from datetime import datetime
 
 class ELT():
