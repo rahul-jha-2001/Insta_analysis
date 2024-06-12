@@ -1,8 +1,4 @@
-
 version: '3'
-
-
-
 services:
 
   airflow:
@@ -19,18 +15,31 @@ services:
 
       - "8080:8080"
     
-    command: airflow standalone
-  
+    command:
+        - standalone
+        #- users create --username Rahul --firstname FIRST_NAME --lastname LAST_NAME --role Admin --email admin@example.org -p Rahul123
+        
   mongodb:
     image: 80344b3d4df4
     volumes:
-      - .mongodb_data:/data/db
+      - .mongodb_data:/data/mongodb
     networks:
       insta-net:
         ipv4_address: 10.10.10.3 
     ports:
 
-      - "27017:27017"
+      - "27018:27017"
+  streamlit:
+    image: insta_analysis_streamlit:latest
+    ports:
+      - "8501:8501"
+    environment:
+      MONGO_DB: "mongodb://10.10.10.3:27017"
+
+    command: streamlit run Main_page.py
+    networks:
+      insta-net:
+        ipv4_address: 10.10.10.4
 networks:
 
   insta-net:

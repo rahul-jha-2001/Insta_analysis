@@ -6,15 +6,21 @@ import numpy as np
 from logger import logging
 from datetime import datetime
 
-class ELT():
+class ETL():
 
+    flag = True
     def __init__(self) -> None:
         self.DB = DB()
         self.data = self.DB.pull(filter={},colunm={"_id":0},db="Raw_data",document="Creator") 
+        if self.data == None:
+            self.flag = False
         self.df = pd.DataFrame(self.data)
+        logging.info(f"Intializatoin done flag = {self.flag} {self.data}")
 
     def ETL(self):
-
+        if self.flag == False:
+            print("Database empty no data to process")
+            return 1
         df = self.df.copy(deep= True)
         posts = []
         for i in df["latestPosts"]:
@@ -67,6 +73,8 @@ class ELT():
             temp_lis_1.append(i)
             temp_lls_2.append(id_to_hash[i])
         df_hash = pd.DataFrame({"id":temp_lis_1,"hashtags":temp_lls_2})    
+       
+       
         df = df.merge(df_hash,left_on = "id",right_on = "id")    
 
 
@@ -80,24 +88,42 @@ class ELT():
             id_to_related[i] = lis
         temp_lis_1 = []
         temp_lls_2 = []    
+       
+       
         for i in id_to_related.keys():
             temp_lis_1.append(i)
             temp_lls_2.append(id_to_related[i])
         df_related = pd.DataFrame({"id":temp_lis_1,"related":temp_lls_2})
-        def Category_cleaner(label:str):
-            try:
-                if "None," in label:
-                    label.removeprefix("None,")
-            except:
-                return "NA"
-            return label
+        
+        
+        
         for i in drop_labels_post:
             try:
                 df_post.drop(i,axis=1,inplace=True)
             except KeyError:
                 continue
         
-        df["businessCategoryName"] = df["businessCategoryName"].apply(Category_cleaner)    
+        
+        def Category_cleaner(label:str):
+            try:
+                if "None," in label:
+                    label=label.replace("None,","")
+            except:
+                return "NA"
+            return label
+        df["businessCategoryName"] = df["businessCategoryName"].apply(Category_cleaner)
+        
+        
+        def day(date):
+            return datetime.fromisoformat(str(date)).weekday()
+        def hour(date):
+            return datetime.fromisoformat(str(date)).hour
+        
+        df_post["day"] = df_post["timestamp"].apply(day)
+        df_post["hour"] = df_post["timestamp"].apply(hour)
+        df_post["Date_Updated"] = datetime.today()
+
+
         df = df.merge(df_related,left_on = "id",right_on = "id")
        
        
@@ -107,9 +133,9 @@ class ELT():
         'postsCount','avg_likes', 'avg_cmnt',
         'avg_reach', 'avg_ER', 'avg_LC', 'hashtags', 'related']]
         
-        for j in df_final["username"]:
-            to_scan_dict = {"id":j,"priority":1}
-            self.DB.push(to_scan_dict,"Clean","To_scan")
+        # for j in df_final["username"]:
+        #     to_scan_dict = {"id":j,"priority":1}
+        #     self.DB.push(to_scan_dict,"Clean","To_scan")
         To_remove =  self.DB.pull(db="Clean",document="Creators",filter={},colunm={"_id":0,"username":1})
 
         Temp = [x["username"] for x in To_remove]
@@ -120,7 +146,4 @@ class ELT():
         self.DB.push_many(data = df_final.to_dict(orient = "records"),db = "Clean",document = "Creators")
         self.DB.push_many(data = df_post.to_dict(orient = "records"),db = "Clean",document = "Posts")
         remove_filter = {'username': {'$in': list(df_final["username"]) }}
-        self.DB.delete(db = "Raw_data",document="Creator",filter= remove_filter)   
-if __name__ == "__main__":
-    E = ELT()
-    E.ETL()
+        self.DB.delete(db = "Raw_data",document="Creator",filter= remove_filter) 
