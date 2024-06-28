@@ -1,28 +1,83 @@
-version: '3'
+version: '3.8'
 services:
-
+  postgres:
+        image: postgres:13
+        environment:
+            - POSTGRES_USER=airflow
+            - POSTGRES_PASSWORD=airflow
+            - POSTGRES_DB=airflow
+        ports:
+            - "5432:5432"
+        networks:
+          insta-net:
+            ipv4_address: 10.10.10.5    
   airflow:
-    image: airflow_insta_analysis:latest
-    volumes:
+        image: airflow_insta_analysis:latest
+        command: >
+          bash -c "airflow db migrate &&
+          airflow users create -r Admin -u $USER_NAME -e $EMAIL -f $NAME -l $LAST -p $PASSWORD &&
+          (airflow scheduler & 
+          airflow webserver)"
+        #entrypoint: entrypoint.sh
+        deploy:
+            restart_policy:
+                condition: on-failure
+        depends_on:
+            - postgres
+        env_file:
+            - .env_airflow
+            - .env
+        volumes:
+            - .airflow:/opt/airflow
+            - ./Src:/opt/Src
+        ports:
+            - "8080:8080"
+        networks:
+          insta-net:
+            ipv4_address: 10.10.10.2    
+  # webserver:
+  #       image: airflow_insta_analysis:latest
+  #       command: bash -c "airflow webserver"
+  #       deploy:
+  #           restart_policy:
+  #               condition: on-failure
+  #       depends_on:
+  #           - postgres
+  #           - scheduler
+  #       env_file:
+  #           - .env
+  #       volumes:
+  #           - .airflow:/opt/airflow
+  #           - ./Src:/opt/Src
+  #       ports:
+  #           - "8080:8080"
+  #       networks:
+  #         insta-net:
+  #           ipv4_address: 10.10.10.2    
+  # airflow:
+  #   image: airflow_insta_analysis:latest
+  #   volumes:
 
 
-      - .airflow:/opt/airflow
-      - ./Src:/opt/Src
-    networks:
-      insta-net:
-        ipv4_address: 10.10.10.2
-    ports:
+  #     - .airflow:/opt/airflow
+  #     - ./Src:/opt/Src
+  #   networks:
+  #     insta-net:
+  #       ipv4_address: 10.10.10.2
+  #   ports:
 
-      - "8080:8080"
+  #     - "8080:8080"
     
-    command:
-        - standalone
-        #- users create --username Rahul --firstname FIRST_NAME --lastname LAST_NAME --role Admin --email admin@example.org -p Rahul123
+  #   command: >
+  #       bash -c
+  #       "airflow users  create --username Rahul_jha1 --firstname FIRSTef_NAME --lastname LASfsdT_NAME --role Admin --email admin@exffample.org -p Rahul123 & airflow standalone
+  #       "
+  #      # - users create --username Rahul --firstname FIRST_NAME --lastname LAST_NAME --role Admin --email admin@example.org -p Rahul123
         
   mongodb:
     image: 80344b3d4df4
     volumes:
-      - .mongodb_data:/data/mongodb
+      - ./mongodb_data:/data/db
     networks:
       insta-net:
         ipv4_address: 10.10.10.3 
@@ -33,8 +88,10 @@ services:
     image: insta_analysis_streamlit:latest
     ports:
       - "8501:8501"
-    environment:
-      MONGO_DB: "mongodb://10.10.10.3:27017"
+    env_file:
+      - .env
+    volumes:
+      - ./Streamlit:/opt/app
 
     command: streamlit run Main_page.py
     networks:

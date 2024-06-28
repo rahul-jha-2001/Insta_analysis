@@ -21,18 +21,16 @@ def Most_recent(df):
 def split_frame(input_df, rows):
     df = [input_df.iloc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
     return df
-def running_avg(data):
-    running_avg = [data.iloc[0]]
-    for i in range(1,len(data)):
-        running_avg.append((running_avg[-1]+data.iloc[i])/2)
-    return running_avg
+
 
 
 
 D = DB()
 
 st.set_page_config(page_title="Creator Insights",layout= "wide")
-required_labels = ["type","caption","hashtags","timestamp","followersCount","ER_per","Reach_per","Likes_per","Cmnts_per"]
+required_labels = ["type","caption","hashtags","timestamp","followersCount","ER_per","Reach_per","Likes_per","Cmnts_per",]
+
+
 menu_1 =st.columns(1)
 with menu_1[0]:
     Name =  st.text_input("Username",help= "Enter the Username of Creator,leaving this Blank will not present any data.")
@@ -75,20 +73,20 @@ if flag:
     menu_2 = st.columns(2)
     with menu_2[0]:
         st.text("Enagement Ratio of Posts \n over a timeperiod",)
-        st.plotly_chart(px.line(df,y =running_avg(df["ER_per"]),x="timestamp"),)
+        st.plotly_chart(px.line(df,y =df["ER_per"],x="timestamp"),)
         
     with menu_2[1]:
         st.text("Reach of Posts over a timeperiod",)
-        st.plotly_chart(px.line(y = running_avg(df["Reach_per"]),x=df["timestamp"],labels=["Reach","Timestamp"]))
+        st.plotly_chart(px.line(y = df["Reach_per"],x=df["timestamp"],labels=["Reach","Timestamp"]))
     menu_3 = st.columns(3)
     with menu_3[0]:
         st.text("Follower count of the Creator  \n over a timeperiod",)
-        st.plotly_chart(px.line(y=running_avg(Creator_df["followersCount"]),x=Creator_df["Date"]))
+        st.plotly_chart(px.line(y=Creator_df["followersCount"],x=Creator_df["Date"]))
     with menu_3[1]:
         st.text("Avg ER of the Creator \n over a timeperiod",)
-        st.plotly_chart(px.line(y=running_avg(Creator_df["avg_ER"]),x=Creator_df["Date"]))
+        st.plotly_chart(px.line(y=Creator_df["avg_ER"],x=Creator_df["Date"]))
     with menu_3[2]:
         st.text("Avg Reach of the Creator \n over a timeperiod",)
-        st.plotly_chart(px.line(y=running_avg(Creator_df["avg_reach"]),x=Creator_df["Date"]))    
+        st.plotly_chart(px.line(y=Creator_df["avg_reach"].sort_values(),x=Creator_df["Date"]))    
 
 

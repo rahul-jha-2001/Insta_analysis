@@ -129,14 +129,16 @@ class Scrape():
         logging.info("data Cleaned")
 
         for i in cleaned_data:
-
-            for j in i["relatedProfiles"]:
-                    to_scan_dict = {"id":j["username"],"priority":2}
-                    try:
+            try:
+                for j in i["relatedProfiles"]:
+                        to_scan_dict = {"id":j["username"],"priority":2}
                         
                         self.DB.push(to_scan_dict,"Clean","To_scan")
-                    except:
-                        continue
+            except KeyError:
+                logging.warning("Key error in Cleaner")
+                logging.warning(f"The error is in {i}")
+                continue
+
                         
       
                 
@@ -150,7 +152,6 @@ class Scrape():
                 self.data = data
                 logging.info("Scrapping Done and cleaning statred")
                 self.Cleaner(self.data)
-    
     async def async_main(self, Update_old_accs:bool =False):
         await asyncio.gather(self.scrape(Update_old_accs))    
     def run(self,Update_old_accs:bool =False):

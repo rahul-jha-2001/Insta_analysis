@@ -5,14 +5,14 @@ import json
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-
+load_dotenv()
 
 class DB():
 
     
     def __init__(self) -> None:
-        load_dotenv()
-        MONGO_DB =   os.getenv("MONGO_DB")    
+        
+        MONGO_DB = os.getenv("MONGO_DB")    
         try:
             self.myclient = pymongo.MongoClient(MONGO_DB)
             logging.info(f"DB connected at {MONGO_DB}")

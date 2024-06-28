@@ -22,10 +22,6 @@ def Most_recent(df):
 def split_frame(input_df, rows):
     df = [input_df.iloc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
     return df
-
-
-    
-
 def slider(df,name_of_column,coluumn,step = None) :
     with coluumn:
         try:

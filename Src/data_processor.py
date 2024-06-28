@@ -12,7 +12,7 @@ class ETL():
     def __init__(self) -> None:
         self.DB = DB()
         self.data = self.DB.pull(filter={},colunm={"_id":0},db="Raw_data",document="Creator") 
-        if self.data == None:
+        if len(self.data) == 0:
             self.flag = False
         self.df = pd.DataFrame(self.data)
         logging.info(f"Intializatoin done flag = {self.flag} {self.data}")
@@ -107,7 +107,7 @@ class ETL():
         def Category_cleaner(label:str):
             try:
                 if "None," in label:
-                    label=label.replace("None,","")
+                    label = label.replace("None,","")
             except:
                 return "NA"
             return label
