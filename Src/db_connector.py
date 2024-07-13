@@ -24,8 +24,12 @@ class DB():
         collection = self.myclient[db][document]
         _ = collection.insert_one(data)
         logging.info(f"Data pushed into DB with following ids{_}")
-    def pull(self,db:str,document:str,filter:dict,colunm:dict,limit:int = 0) -> list:
-        return list(self.myclient[db][document].find(filter=filter,projection = colunm).limit(limit))
+    def pull(self,db:str,document:str,filter:dict,colunm:dict,limit:int = 0,sort:dict = None) -> list:
+        if sort == None:
+            return list(self.myclient[db][document].find(filter=filter,projection = colunm).limit(limit))
+        elif sort != None:
+            return list(self.myclient[db][document].find(filter=filter,projection = colunm).sort(sort).limit(limit))
+            
     def push_many(self,data:list,db,document) -> None:
         collection = self.myclient[db][document]
         _ = collection.insert_many(data)

@@ -15,13 +15,14 @@ class ETL():
         if len(self.data) == 0:
             self.flag = False
         self.df = pd.DataFrame(self.data)
-        logging.info(f"Intializatoin done flag = {self.flag} {self.data}")
+        logging.info(f"Intializatoin done flag = {self.flag}")
 
     def ETL(self):
         if self.flag == False:
             print("Database empty no data to process")
             return 1
         df = self.df.copy(deep= True)
+        
         posts = []
         for i in df["latestPosts"]:
             if type(i) == float:
@@ -43,7 +44,6 @@ class ETL():
     
         df_post["timestamp"] = df_post["timestamp"].apply(datetime.fromisoformat,1)
  
-          
 
 
         df_post = df_post.merge(df[["id","followersCount"]],left_on="ownerId",right_on= "id")
@@ -54,14 +54,12 @@ class ETL():
         df_post["Cmnts_per"] = ((df_post["commentsCount"])/df_post["followersCount"])*100
         df_post["LC_ratio"] = df_post["commentsCount"]/df_post["likesCount"]
         #Creating Different measure of enagement of an acc
-
+        
         df = df.merge(df_post.groupby(["ownerUsername","ownerId"])
                 .agg(avg_likes =("Likes_per","mean"),avg_cmnt =("Cmnts_per","mean"),avg_reach = ("Reach_per","mean"),avg_ER =("ER_per","mean"),avg_LC =("LC_ratio","mean"))
                 ,left_on= "id",right_on= "ownerId")
 
         id_to_hash = {}
-        id_to_related = {}
-
         for i  in df['id']:
             lis = []
             for j in df_post[df_post["ownerId"] == i]["hashtags"]:
@@ -73,27 +71,23 @@ class ETL():
             temp_lis_1.append(i)
             temp_lls_2.append(id_to_hash[i])
         df_hash = pd.DataFrame({"id":temp_lis_1,"hashtags":temp_lls_2})    
-       
-       
+        
         df = df.merge(df_hash,left_on = "id",right_on = "id")    
-
-
-
-
-        for i in df["id"]:
-            lis = []
-            for j in df[df["id"] == i]["relatedProfiles"]:
-                for k in j:
-                    lis.append(k["id"])
-            id_to_related[i] = lis
-        temp_lis_1 = []
-        temp_lls_2 = []    
+        #df = pd.concat([df,df_hash],keys=["id","id"])
+        # for i in df["id"]:
+        #     lis = []
+        #     for j in df[df["id"] == i]["relatedProfiles"]:
+        #         for k in j:
+        #             lis.append(k["id"])
+        #     id_to_related[i] = lis
+        # temp_lis_1 = []
+        # temp_lls_2 = []    
        
        
-        for i in id_to_related.keys():
-            temp_lis_1.append(i)
-            temp_lls_2.append(id_to_related[i])
-        df_related = pd.DataFrame({"id":temp_lis_1,"related":temp_lls_2})
+        # for i in id_to_related.keys():
+        #     temp_lis_1.append(i)
+        #     temp_lls_2.append(id_to_related[i])
+        # df_related = pd.DataFrame({"id":temp_lis_1,"related":temp_lls_2})
         
         
         
@@ -124,14 +118,16 @@ class ETL():
         df_post["Date_Updated"] = datetime.today()
 
 
-        df = df.merge(df_related,left_on = "id",right_on = "id")
-       
+        #df = df.merge(df_related,left_on = "id",right_on = "id")
+        #print(df,df_related)
+        #df = pd.concat([df,df_related],keys=["id","id"])
        
         df_final = df[['Date', 'fullName', 'followersCount', 'verified',
         'followsCount', 'private', 'username',
         'isBusinessAccount', 'id', 'businessCategoryName', 'biography',
         'postsCount','avg_likes', 'avg_cmnt',
-        'avg_reach', 'avg_ER', 'avg_LC', 'hashtags', 'related']]
+        'avg_reach', 'avg_ER', 'avg_LC', 'hashtags']]
+        print(df_final,4)
         
         # for j in df_final["username"]:
         #     to_scan_dict = {"id":j,"priority":1}
@@ -142,7 +138,7 @@ class ETL():
         remove = {"id":{"$in":Temp},"priority":2}
         self.DB.delete(db="Clean",document="To_scan",filter=remove)    
         
-        
+        print(df_final,3)
         self.DB.push_many(data = df_final.to_dict(orient = "records"),db = "Clean",document = "Creators")
         self.DB.push_many(data = df_post.to_dict(orient = "records"),db = "Clean",document = "Posts")
         remove_filter = {'username': {'$in': list(df_final["username"]) }}

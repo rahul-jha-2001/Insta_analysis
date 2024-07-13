@@ -47,39 +47,45 @@ class Scrape():
             self.obj_list.append(temp)
 
 
-    def To_scan(self,update_old_accs:bool) -> list:
-        if update_old_accs:
-            final_list = self.DB.pull(db = "Clean",document="To_scan",filter= {"priority":1},colunm={"_id":0,"priority":0},limit= 300)
-            final_list = [x["id"] for x in final_list]
+    def To_scan_old(self):
+        final_list = self.DB.pull(db = "Clean",document="To_scan",filter= {"priority":1},colunm={"priority":0},limit= 200,sort = {"_id":-1})
+        final_list = [x["id"] for x in final_list]
+        final_list = set(final_list)
+        final_list = list(final_list)
+        if len(final_list) == 0:
+            self.Flag = False
+            logging.warning("No Accs left to update")
+        else:
+            self.To_scan_list = final_list
+            logging.info("To_scan listed Created")
+            self.input_obj_maker()
+
+    def To_scan_new(self):            
+            final_list = self.DB.pull(db = "Clean",document="To_scan",filter= {"$or" : [{"priority":2},{"priority":3}]},colunm={"_id":0},limit= 200)
+            
+            
+            final_list = sorted(final_list,key=lambda x: x['priority'],reverse= True)
             print(final_list)
+            final_list = [x["id"] for x in final_list]
             final_list = set(final_list)
             final_list = list(final_list)
+
+            To_get_filter = {'username': {'$in':final_list}}
+            Acc_not_to_scan = self.DB.pull(db = "Clean",document="Creators",filter= To_get_filter,colunm={"_id":0})
+            
+            for i in [x["username"] for x in Acc_not_to_scan]:  
+                final_list.remove(i)
             if len(final_list) == 0:
                 self.Flag = False
-                logging.warning("No Accs left to update")
-        elif not update_old_accs:
-                
-                final_list = self.DB.pull(db = "Clean",document="To_scan",filter= {"priority":2},colunm={"_id":0,"priority":0},limit= 300)
-                final_list = [x["id"] for x in final_list]
-                final_list = set(final_list)
-                final_list = list(final_list)
+                logging.warning("No Accs left to scan")
+            else:
+    
+                self.To_scan_list = final_list
 
-                To_get_filter = {'username': {'$in':final_list}}
-                Acc_not_to_scan = self.DB.pull(db = "Clean",document="Creators",filter= To_get_filter,colunm={"_id":0})
-                
-                for i in [x["username"] for x in Acc_not_to_scan]:  
-                    final_list.remove(i)
-                if len(final_list) == 0:
-                    self.Flag = False
-                    logging.warning("No Accs left to scan")
-
-        
-        self.To_scan_list = final_list
-
-        remove_filter = {'id': {'$in': final_list }}
-        self.DB.delete(db = "Clean",document="To_scan",filter= remove_filter)    
-        logging.info("To_scan listed Created")
-        self.input_obj_maker()
+                remove_filter = {'id': {'$in': final_list }}
+                self.DB.delete(db = "Clean",document="To_scan",filter= remove_filter)    
+                logging.info("To_scan listed Created")
+                self.input_obj_maker()
 
     
     async def get(self,session: aiohttp.ClientSession,input_obj:dict,url : str) -> dict:
@@ -115,21 +121,33 @@ class Scrape():
         """
         cleaned_data = []
         for i in data:
-            for j in i:
-                try:
-                    j["Date"] = datetime.today() 
-                    cleaned_data.append(j)
-                    self.DB.push(data=j,db="Raw_data",document="Creator")
-                except:
-                    logging.warning("Some Error encounterd")
-                    logging.warning(f"{j}")
+            try:
+                for j in i:
+                    print(j,type(j))
+                    if "error" in j.keys():
+                        logging.warning("Username not correct {j}")
+                        continue
+                    try:
+                        j["Date"] = datetime.today() 
+                        cleaned_data.append(j)
+                        self.DB.push(data=j,db="Raw_data",document="Creator")
+                    except:
+                        logging.warning("Some Error encounterd")
+                        logging.warning(f"{j}")
+                        continue
+            except:
+                    logging.warning("Some Error encounterd in reading i")
+                    logging.warning(f"{i}")
                     continue
+
         self.Scanned_count = self.Scanned_count + len(cleaned_data)        
         
         logging.info("data Cleaned")
 
         for i in cleaned_data:
             try:
+                if i["followersCount"] < 10000:
+                    continue
                 for j in i["relatedProfiles"]:
                         to_scan_dict = {"id":j["username"],"priority":2}
                         
@@ -145,8 +163,12 @@ class Scrape():
     
   
     async def scrape(self,Update_old_accs:bool =False):
-    
-        self.To_scan(Update_old_accs)
+        
+
+        if Update_old_accs:
+            self.To_scan_old()
+        elif not Update_old_accs:
+            self.To_scan_new()   
         if self.Flag:
                 data = await self.main(self.obj_list,self.Scrape_Link_dataset)
                 self.data = data
@@ -155,6 +177,11 @@ class Scrape():
     async def async_main(self, Update_old_accs:bool =False):
         await asyncio.gather(self.scrape(Update_old_accs))    
     def run(self,Update_old_accs:bool =False):
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.async_main(Update_old_accs))
+        curr_run_count = requests.get(url=os.getenv("Actor_Run_list")).json()["data"]["total"]
+        if curr_run_count == 0:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.async_main(Update_old_accs))
+        else:
+            logging.info("Total bot limit reached")
+            return 0   
         

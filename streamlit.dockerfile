@@ -1,4 +1,5 @@
-FROM python:3
+
+FROM python:latest
 
 WORKDIR /opt/app
 

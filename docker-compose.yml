@@ -1,4 +1,5 @@
-version: '3.8'
+version: '4'
+
 services:
   postgres:
         image: postgres:13
@@ -12,7 +13,11 @@ services:
           insta-net:
             ipv4_address: 10.10.10.5    
   airflow:
-        image: airflow_insta_analysis:latest
+        #image: airflow_insta_analysis:latest
+        build:
+          context: .
+          dockerfile: airflow.dockerfile
+        image: airflow:latest  
         command: >
           bash -c "airflow db migrate &&
           airflow users create -r Admin -u $USER_NAME -e $EMAIL -f $NAME -l $LAST -p $PASSWORD &&
@@ -85,7 +90,12 @@ services:
 
       - "27018:27017"
   streamlit:
-    image: insta_analysis_streamlit:latest
+    #image: insta_analysis_streamlit:latest
+    #build: D:\insta_analysis\streamlit.dockerfile
+    build:
+          context: .
+          dockerfile: streamlit.dockerfile
+    image: streamlit:latest
     ports:
       - "8501:8501"
     env_file:

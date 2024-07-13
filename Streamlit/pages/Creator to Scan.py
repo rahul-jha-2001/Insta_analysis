@@ -9,19 +9,19 @@ def Add(username:str,Monitor:bool):
     if Monitor:
         D.push({"id":username,"priority":1},"Clean","To_scan")
     elif not Monitor:
-        D.push({"id":username,"priority":2},"Clean","To_scan")
+        D.push({"id":username,"priority":3},"Clean","To_scan")
 
 def remove(username:str,Monitor:bool):
     if Monitor:
         D.delete(filter={"id":username,"priority":1},db="Clean",document="To_scan")
     elif not Monitor:
-        D.delete(filter={"id":username,"priority":2},db="Clean",document="To_scan")
+        D.delete(filter={"id":username,"priority":3},db="Clean",document="To_scan")
 
 def Clear(Monitor:bool):
     if Monitor:
         D.delete(filter={"priority":1},db="Clean",document="To_scan")
     elif not Monitor:
-        D.delete(filter={"priority":2},db="Clean",document="To_scan")
+        D.delete(filter={"priority":3},db="Clean",document="To_scan")
 def split_frame(input_df, rows):
         df = [input_df.iloc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
         return df
@@ -39,7 +39,7 @@ top_menu = st.columns(1)
 with top_menu[0]:
     Priority = st.radio("New/Monitor", options=["New", "Monitor"], horizontal=1, index=1)
     if Priority == "New":
-        df = pd.DataFrame(D.pull("Clean","To_scan",{"priority":2},{}))
+        df = pd.DataFrame(D.pull("Clean","To_scan",{"priority":3},{}))
     elif Priority == "Monitor":
         df = pd.DataFrame(D.pull("Clean","To_scan",{"priority":1},{}))
 

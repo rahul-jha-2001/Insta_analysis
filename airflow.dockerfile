@@ -1,4 +1,4 @@
-FROM apache/airflow:latest
+FROM apache/airflow:latest as airflow
 USER root
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
@@ -8,8 +8,6 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /opt
 
-RUN pwd
-RUN uname -a
 
 COPY  requirement.txt .
 USER airflow

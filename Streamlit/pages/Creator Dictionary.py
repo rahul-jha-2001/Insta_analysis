@@ -22,17 +22,18 @@ def Most_recent(df):
 def split_frame(input_df, rows):
     df = [input_df.iloc[i : i + rows - 1, :] for i in range(0, len(input_df), rows)]
     return df
-def slider(df,name_of_column,coluumn,step = None) :
+def slider(df,name_of_column:str,coluumn,step = None) :
     with coluumn:
+
         try:
             ma,mi = max(df[name_of_column]),min((df[name_of_column]))
            
-            range = st.slider(label=f"{name_of_column} Range",min_value = mi,max_value=ma,step=step)
+            range = st.slider(label=f"{name_of_column.capitalize()}" + " Range",min_value = mi,max_value=ma,step=step)
             return df[df[name_of_column]<=range].copy()
         except:
             return df
 
-
+ 
 D = DB()
 
 df = pd.DataFrame(D.pull("Clean","Creators",{},{"_id":0}))
@@ -40,17 +41,21 @@ df = Most_recent(df)
 
 head_menu = st.columns(3)
 with head_menu[0]:
+    st.write("Followers")
     sub_head =st.columns(2)
+    
     with sub_head[0]:
+        
         df = df[df["followersCount"] >= st.number_input("Greater Than",min_value=10000)]
     with sub_head[1]:
-        df = df[df["followersCount"] <= st.number_input("Less Than",max_value=max(df["followersCount"]))]
+        df = df[df["followersCount"] <= st.number_input("Less Than", value= 1000000)]
 
 df = slider(df,"avg_ER",head_menu[1])
 df = slider(df,"avg_reach",head_menu[2])
 
 #st.table(df)
-top_menu = st.columns(3)
+top_menu = st.columns([1,1,1,1])
+print(len(top_menu))
 with top_menu[0]:
     sort = st.radio("Sort Data", options=["Yes", "No"], horizontal=1, index=1)
 if sort == "Yes":
@@ -60,9 +65,11 @@ if sort == "Yes":
         sort_direction = st.radio(
             "Direction", options=["⬆️", "⬇️"], horizontal=True
         )
-    df = df.sort_values(
-        by=sort_field, ascending=sort_direction == "⬆️", ignore_index=True
-    )
+    df = df.sort_values(by=sort_field, ascending=sort_direction == "⬆️", ignore_index=True)
+with top_menu[3]:
+    fliter = st.selectbox("Category",options= df["businessCategoryName"].unique())
+    df = df[df["businessCategoryName"] == fliter]
+           
 pagination = st.container()
 
 bottom_menu = st.columns((4, 1, 1))
