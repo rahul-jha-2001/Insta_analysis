@@ -73,8 +73,11 @@ class Scrape():
             To_get_filter = {'username': {'$in':final_list}}
             Acc_not_to_scan = self.DB.pull(db = "Clean",document="Creators",filter= To_get_filter,colunm={"_id":0})
             
-            for i in [x["username"] for x in Acc_not_to_scan]:  
-                final_list.remove(i)
+            for i in [x["username"] for x in Acc_not_to_scan]:
+                try:  
+                    final_list.remove(i)
+                except ValueError:
+                     pass
             if len(final_list) == 0:
                 self.Flag = False
                 logging.warning("No Accs left to scan")
@@ -97,7 +100,35 @@ class Scrape():
         # You can either handle that here, or pass the exception through
         data = await resp.json()
         logging.info(f"Received data for {url}")
-        return data
+        for i in data:
+            try:
+                if "error" in i.keys():
+                    logging.warning("Username not correct {i}")
+                    continue
+                if i["followersCount"] < 10000:
+                        continue
+                try:
+                    i["Date"] = datetime.today() 
+                    self.DB.push(data=i,db="Raw_data",document="Creator")
+                except:
+                    logging.warning("Some Error encounterd")
+                    logging.warning(f"{i}")
+                    continue
+                try:
+                    
+                    for j in i["relatedProfiles"]:
+                            to_scan_dict = {"id":j["username"],"priority":2}
+                            
+                            self.DB.push(to_scan_dict,"Clean","To_scan")
+                except KeyError:
+                    logging.warning("Key error in Cleaner")
+                    logging.warning(f"The error is in {i}")
+                    continue            
+            except:
+                    logging.warning("Some Error encounterd in reading i")
+                    logging.warning(f"{i}")
+                    continue
+        return 0
 
 
     async def main(self,input_objs,url):
@@ -112,50 +143,50 @@ class Scrape():
             # loop over asyncio.as_completed()
             data = await asyncio.gather(*tasks, return_exceptions=True)
             return data
-    def Cleaner(self,data) -> None:
-        """
-            The Scrape function produces a data in the form of 2-d nested Lists -> list[list] 
-            To pull the lists out of the main list we use 2 loops to pull them out
-            can be done with recrusion but will try later,
-            Also traverse the data to find more related profiles to further scan       
-        """
-        cleaned_data = []
-        for i in data:
-            try:
-                for j in i:
-                    print(j,type(j))
-                    if "error" in j.keys():
-                        logging.warning("Username not correct {j}")
-                        continue
-                    try:
-                        j["Date"] = datetime.today() 
-                        cleaned_data.append(j)
-                        self.DB.push(data=j,db="Raw_data",document="Creator")
-                    except:
-                        logging.warning("Some Error encounterd")
-                        logging.warning(f"{j}")
-                        continue
-            except:
-                    logging.warning("Some Error encounterd in reading i")
-                    logging.warning(f"{i}")
-                    continue
+    # def Cleaner(self,data) -> None:
+    #     """
+    #         The Scrape function produces a data in the form of 2-d nested Lists -> list[list] 
+    #         To pull the lists out of the main list we use 2 loops to pull them out
+    #         can be done with recrusion but will try later,
+    #         Also traverse the data to find more related profiles to further scan       
+    #     """
+    #     cleaned_data = []
+    #     for i in data:
+    #         try:
+    #             for j in i:
+    #                 print(j,type(j))
+    #                 if "error" in j.keys():
+    #                     logging.warning("Username not correct {j}")
+    #                     continue
+    #                 try:
+    #                     j["Date"] = datetime.today() 
+    #                     cleaned_data.append(j)
+    #                     self.DB.push(data=j,db="Raw_data",document="Creator")
+    #                 except:
+    #                     logging.warning("Some Error encounterd")
+    #                     logging.warning(f"{j}")
+    #                     continue
+    #         except:
+    #                 logging.warning("Some Error encounterd in reading i")
+    #                 logging.warning(f"{i}")
+    #                 continue
 
-        self.Scanned_count = self.Scanned_count + len(cleaned_data)        
+    #     self.Scanned_count = self.Scanned_count + len(cleaned_data)        
         
-        logging.info("data Cleaned")
+    #     logging.info("data Cleaned")
 
-        for i in cleaned_data:
-            try:
-                if i["followersCount"] < 10000:
-                    continue
-                for j in i["relatedProfiles"]:
-                        to_scan_dict = {"id":j["username"],"priority":2}
+    #     for i in cleaned_data:
+    #         try:
+    #             if i["followersCount"] < 10000:
+    #                 continue
+    #             for j in i["relatedProfiles"]:
+    #                     to_scan_dict = {"id":j["username"],"priority":2}
                         
-                        self.DB.push(to_scan_dict,"Clean","To_scan")
-            except KeyError:
-                logging.warning("Key error in Cleaner")
-                logging.warning(f"The error is in {i}")
-                continue
+    #                     self.DB.push(to_scan_dict,"Clean","To_scan")
+    #         except KeyError:
+    #             logging.warning("Key error in Cleaner")
+    #             logging.warning(f"The error is in {i}")
+    #             continue
 
                         
       
@@ -171,9 +202,9 @@ class Scrape():
             self.To_scan_new()   
         if self.Flag:
                 data = await self.main(self.obj_list,self.Scrape_Link_dataset)
-                self.data = data
-                logging.info("Scrapping Done and cleaning statred")
-                self.Cleaner(self.data)
+                #self.data = data
+                logging.info("Scrapping and cleaning done")
+                #self.Cleaner(self.data)
     async def async_main(self, Update_old_accs:bool =False):
         await asyncio.gather(self.scrape(Update_old_accs))    
     def run(self,Update_old_accs:bool =False):
